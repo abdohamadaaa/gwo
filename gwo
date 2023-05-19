@@ -1,0 +1,92 @@
+import random
+import math
+import copy
+import sys
+
+def fitness_tsp(position, distances):
+    cost = 0
+    for i in range(len(position)-1):
+        cost += distances[position[i]][position[i+1]]
+    cost += distances[position[-1]][position[0]]
+    return cost
+
+def swap(sequence, i, j):
+    new_sequence = copy.deepcopy(sequence)
+    new_sequence[i], new_sequence[j] = new_sequence[j], new_sequence[i]
+    return new_sequence
+
+class GreyWolfOptimizer:
+    def __init__(self, d, N, max_iter, fitness, distances):
+        self.d = d
+        self.N = N
+        self.max_iter = max_iter
+        self.fitness = fitness
+        self.distances = distances
+
+    def optimize(self):
+        wolves = []
+        for i in range(self.N):
+            wolf = random.sample(range(self.d), self.d)
+            wolves.append(wolf)
+
+        alpha_wolf = copy.deepcopy(wolves[0])
+        beta_wolf = copy.deepcopy(wolves[1])
+        gamma_wolf = copy.deepcopy(wolves[2])
+
+        for iter in range(self.max_iter):
+            a = 2 * (1 - iter / self.max_iter)
+
+            for i in range(self.N):
+                A1 = a * (2 * random.random() - 1)
+                C1 = 2 * random.random()
+                D_alpha = abs(C1 * alpha_wolf - wolves[i])
+                X1 = alpha_wolf - A1 * D_alpha
+
+                A2 = a * (2 * random.random() - 1)
+                C2 = 2 * random.random()
+                D_beta = abs(C2 * beta_wolf - wolves[i])
+                X2 = beta_wolf - A2 * D_beta
+
+                A3 = a * (2 * random.random() - 1)
+                C3 = 2 * random.random()
+                D_gamma = abs(C3 * gamma_wolf - wolves[i])
+                X3 = gamma_wolf - A3 * D_gamma
+
+                wolves[i] = [round(x) for x in (X1 + X2 + X3) / 3]
+
+                for j in range(self.d):
+                    if wolves[i][j] < 0:
+                        wolves[i][j] = 0
+                    if wolves[i][j] > self.d-1:
+                        wolves[i][j] = self.d-1
+
+                for j in range(self.d):
+                    for k in range(j+1, self.d):
+                        if wolves[i][j] == wolves[i][k]:
+                            wolves[i] = swap(wolves[i], j, k)
+
+            wolves.sort(key=lambda x: self.fitness(x, self.distances))
+
+            if self.fitness(wolves[0], self.distances) < self.fitness(alpha_wolf, self.distances):
+                alpha_wolf = copy.deepcopy(wolves[0])
+            if self.fitness(wolves[1], self.distances) < self.fitness(beta_wolf, self.distances):
+                beta_wolf = copy.deepcopy(wolves[1])
+            if self.fitness(wolves[2], self.distances) < self.fitness(gamma_wolf, self.distances):
+                gamma_wolf = copy.deepcopy(wolves[2])
+
+        return alpha_wolf
+
+if __name__ == '__main__':
+    d = 5
+    N = 50
+    max_iter = 100
+
+    distances = [[0, 10, 15, 20],
+                 [10, 0, 35, 25],
+                 [15, 35, 0, 30],
+                 [20, 25, 30, 0]]
+
+    gwo_tsp = GreyWolfOptimizer(d, N, max_iter, fitness_tsp, distances)
+    best_tsp_position = gwo_tsp.optimize()
+    print('Best TSP position:', best_tsp_position)
+    print('Best TSP fitness:', fitness_tsp(best_tsp_position, distances))
