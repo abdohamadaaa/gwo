@@ -1,0 +1,162 @@
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import matplotlib.pyplot as plt
+import numpy as np
+import tifffile as tiff
+import os
+import cv2
+from skimage.transform import resize
+from sklearn.preprocessing import LabelEncoder
+import os
+from PIL import Image
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from keras import regularizers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+
+batch_size = 32
+img_size=128
+epochs=50
+NUM_CLASSES=44
+d1_train_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D1/train',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+d1_val_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D1/test',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+
+d1_train_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D1/train',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+d1_val_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D1/test',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+
+d2_train_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D2/train_patch',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+d2_val_ds=ImageDataGenerator(
+    rescale=1./255
+).flow_from_directory(
+'/kaggle/input/malayakew-plant-leaf-dataset/MK/D2/test_patch',
+target_size = (img_size, img_size),
+batch_size = batch_size, 
+class_mode = "categorical")
+
+import matplotlib.pyplot as plt
+
+
+def plot_hist(hist):
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6)) # create a figure with 1 row and 2 columns
+
+    # plot accuracy for training and validation sets
+    axs[0].plot(hist.history["accuracy"])
+    axs[0].plot(hist.history["val_accuracy"])
+    axs[0].set_title("model accuracy")
+    axs[0].set_ylabel("accuracy")
+    axs[0].set_xlabel("epoch")
+    axs[0].legend(["train", "validation"], loc="upper left")
+
+    # plot loss for training and validation sets
+    axs[1].plot(hist.history["loss"])
+    axs[1].plot(hist.history["val_loss"])
+    axs[1].set_title("model loss")
+    axs[1].set_ylabel("loss")
+    axs[1].set_xlabel("epoch")
+    axs[1].legend(["train", "validation"], loc="upper left")
+
+    plt.show()
+
+    def get_label_array(dsi):
+    y=[]
+    for i in range(len(dsi)):
+        a,b=dsi[i]
+        b=np.argmax(b,axis=1)
+        y.append(b)
+        
+    y= np.concatenate(y)
+    return y
+
+    y_test1=get_label_array(d1_val_ds)
+y_test2=get_label_array(d2_val_ds)
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+
+def print_stats(y_test,y_pred) :
+    confusion = confusion_matrix(y_test, y_pred)
+    print('Confusion Matrix\n')
+    print(confusion)
+    print('\nAccuracy: {:.2f}\n'.format(accuracy_score(y_test, y_pred)))
+
+    print('Micro Precision: {:.2f}'.format(precision_score(y_test, y_pred, average='micro')))
+    print('Micro Recall: {:.2f}'.format(recall_score(y_test, y_pred, average='micro')))
+    print('Micro F1-score: {:.2f}\n'.format(f1_score(y_test, y_pred, average='micro')))
+
+    print('Macro Precision: {:.2f}'.format(precision_score(y_test, y_pred, average='macro')))
+    print('Macro Recall: {:.2f}'.format(recall_score(y_test, y_pred, average='macro')))
+    print('Macro F1-score: {:.2f}\n'.format(f1_score(y_test, y_pred, average='macro')))
+
+    print('Weighted Precision: {:.2f}'.format(precision_score(y_test, y_pred, average='weighted')))
+    print('Weighted Recall: {:.2f}'.format(recall_score(y_test, y_pred, average='weighted')))
+    print('Weighted F1-score: {:.2f}'.format(f1_score(y_test, y_pred, average='weighted')))
+
+    def create_model_train_print_hist(model,modelname) :
+    inputs = layers.Input(shape=(img_size,img_size, 3))
+    output = model(inputs)
+    global_average_layer = tf.keras.layers.GlobalAveragePooling2D()(output)
+    prediction_layer = tf.keras.layers.Dense(NUM_CLASSES, activation='softmax',kernel_regularizer=regularizers.l2(0.001))(global_average_layer)
+    model = tf.keras.Model(inputs,prediction_layer)
+    # model.compile( optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    model.compile( optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    model.summary()
+    model1=model
+    model2=model
+#     hist = model.fit(d1_train_ds, epochs=epochs, validation_data=d1_val_ds, verbose=2,callbacks=EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=20))
+    hist = model1.fit(d1_train_ds, epochs=epochs, validation_data=d1_val_ds, verbose=2)
+    model1.save(modelname+'d1.h5')
+    print("------MK D1-------")
+    plot_hist(hist)
+  
+    y_test_pred=model1.predict(d1_val_ds)
+    y_test_pred=np.argmax(y_test_pred,axis=1)
+    print_stats(y_test1,y_test_pred)
+    hist = model2.fit(d2_train_ds, epochs=epochs, validation_data=d2_val_ds, verbose=2)
+    model2.save(modelname+'d2.h5')
+    print("------MK D2-------")
+    plot_hist(hist)
+   
+    y_test_pred=model2.predict(d2_val_ds)
+    y_test_pred=np.argmax(y_test_pred,axis=1)
+    print_stats(y_test2,y_test_pred)
+
+    model=VGG16(include_top=False, weights=None, classes=NUM_CLASSES)
+create_model_train_print_hist(model,'vgg16')
